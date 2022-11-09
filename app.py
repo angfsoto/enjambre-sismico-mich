@@ -5,6 +5,7 @@ import pandas as pd
 
 app = Dash(__name__)
 
+server = app.server
 # Set the default theme to 'plotly_dark'
 # pio.templates.default = 'plotly_dark'
 
