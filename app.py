@@ -12,10 +12,10 @@ server = app.server
 
 df = pd.read_csv('data/enjambres.csv')
 df['profundidad'] = -df['profundidad']
-df['fecha'] = pd.to_datetime(df['fecha'])
-df['hora'] = pd.to_datetime(df['hora'])
 df['fecha_utc'] = pd.to_datetime(df['fecha_utc'])
-df['hora_utc'] = pd.to_datetime(df['hora_utc'])
+
+# Join fecha_utc and hora_utc into a single datetime column with the format 'YYYY-MM-DDTHH:MM:SS'
+df['fecha_hora_utc'] = df['fecha_utc'].dt.strftime('%Y-%m-%d') + 'T' + df['hora_utc']
 
 markdown_text = '''
 # Enjambre sísmico Michoacán 2019 - 2022
@@ -84,8 +84,18 @@ def update_bar_chart(slider_range, start_date, end_date):
 
     if len(mask) > 0:
 
+        tooltip_labels = {
+            'fecha_hora_utc': 'Fecha y hora UTC',
+            'latitud': 'Latitud',
+            'longitud': 'Longitud',
+            'profundidad': 'Profundidad (km)',
+            'magnitud': 'Magnitud',
+            'referencia': 'Referencia'
+        }
+
         fig = px.scatter_3d(mask, x="latitud", y="longitud", z="profundidad", size='magnitud', size_max=10,
-                            color="magnitud", hover_data=['fecha_utc', 'hora_utc', 'latitud', 'longitud', 'profundidad', 'magnitud', 'referencia'])
+                            color="magnitud", hover_data=['fecha_hora_utc', 'latitud', 'longitud', 'profundidad', 'magnitud', 'referencia'],
+                            labels=tooltip_labels)
 
         # Format the labels
         fig.update_layout(scene = dict(
