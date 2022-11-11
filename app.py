@@ -21,9 +21,11 @@ markdown_text = '''
 # Enjambre sísmico Michoacán 2019 - 2022
 
 Gráfica de sismos registrados entre 2019 y 2022 en los alrededores
-de los volcanes Tancítaro y Paricutín en Michoacán, México. Creado por [Juan Carlos Bucio T.](https://jcbucio.github.io/).
+de los volcanes Tancítaro y Paricutín en Michoacán, México. Datos del [SSN](http://www.ssn.unam.mx/). 
+
+Creado por [Juan Carlos Bucio T.](https://jcbucio.github.io/).
 '''
-datepicker_label = "#### Elije un rango de fechas:"
+datepicker_label = "#### Elije un rango de fechas UTC:"
 magnitudes_label = "#### Arrastra el slider para ver un rango diferente de magnitudes:"
 
 
@@ -44,7 +46,7 @@ app.layout = html.Div([
             end_date_placeholder_text="Fecha final",
         )
     ], style={'textAlign': 'center'}),
-    dcc.Graph(id='graph', style={'height': '70vh'}),
+    dcc.Graph(id='graph', style={'height': '60vh'}),
     dcc.Markdown(magnitudes_label),
     dcc.RangeSlider(
         id='range-slider',
