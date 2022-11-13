@@ -60,7 +60,11 @@ app.layout = html.Div([
             end_date_placeholder_text="Fecha final",
         )
     ], style={'textAlign': 'center'}),
-    html.Br(),
+    dcc.Loading(
+        id="loading-1",
+        type="default",
+        children=html.Div(id="loading-output-1", style={'padding': '30px'}),
+    ),
     dcc.Graph(id='graph', style={'height': '60vh'}),
     html.Div([
         html.Div([
@@ -95,13 +99,14 @@ app.layout = html.Div([
 # Define the callback for the graph
 @app.callback(
     Output('graph', 'figure'),
+    Output('loading-output-1', 'children'),
     Input('range-slider', 'value'),
     Input('date-picker-range', 'start_date'),
     Input('date-picker-range', 'end_date'),
-    Input('topo-slider', 'value')
+    Input('topo-slider', 'value'),
 )
 
-def update_bar_chart(slider_range, start_date, end_date, topo_exag):
+def update_chart(slider_range, start_date, end_date, topo_exag):
     # Get the lower and upper bounds of the magnitudes
     low, high = slider_range
 
@@ -194,8 +199,7 @@ def update_bar_chart(slider_range, start_date, end_date, topo_exag):
             title_x=0.5
        )
     
-    return fig
-
+    return fig, " "
 
 if __name__ == '__main__':
     app.run_server(debug=False)
