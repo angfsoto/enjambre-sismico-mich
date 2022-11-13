@@ -5,12 +5,11 @@ import pandas as pd
 import numpy as np
 import netCDF4 as nc
 
+# Set up the app
 app = Dash(__name__)
-
 server = app.server
-# Set the default theme to 'plotly_dark'
-# pio.templates.default = 'plotly_dark'
 
+# Load the data
 grid = nc.Dataset('data/tancitaro_sampled_150m.nc')
 x = grid['x'][:]
 y = grid['y'][:]
@@ -24,14 +23,16 @@ df['fecha_utc'] = pd.to_datetime(df['fecha_utc'])
 # Join fecha_utc and hora_utc into a single datetime column with the format 'YYYY-MM-DDTHH:MM:SS'
 df['fecha_hora_utc'] = df['fecha_utc'].dt.strftime('%Y-%m-%d') + 'T' + df['hora_utc']
 
+# Set the markdown text for the app layout
 markdown_text = '''
 # Enjambre sísmico Michoacán 2019 - 2022
 
 Enjambres sísmicos registrados entre abril 2019 y agosto 2022 en los alrededores
 de los volcanes Tancítaro y Paricutín en Michoacán, México.
 '''
-datepicker_label = "#### Elije un rango de fechas UTC:"
-magnitudes_label = "#### Arrastra el slider para ver un rango diferente de magnitudes:"
+datepicker_label = "#### Rango de fechas UTC:"
+magnitudes_label = "#### Rango de magnitudes:"
+topo_label = "#### Exageración de elevación:"
 foot_label = '''
 ### Referencias
 
@@ -41,8 +42,9 @@ foot_label = '''
 - Código fuente en [GitHub](https://github.com/JCBucio/enjambre-sismico-mich).
 '''
 
-marks_range = np.arange(2, 5.5, 0.5)
+marks_range = np.arange(2.0, 5.0, 0.5)
 
+# Set up the app layout
 app.layout = html.Div([
     dcc.Markdown(children=markdown_text, style={'textAlign': 'center'}),
     html.Div([
@@ -58,28 +60,49 @@ app.layout = html.Div([
             end_date_placeholder_text="Fecha final",
         )
     ], style={'textAlign': 'center'}),
+    html.Br(),
     dcc.Graph(id='graph', style={'height': '60vh'}),
-    dcc.Markdown(magnitudes_label),
-    dcc.RangeSlider(
-        id='range-slider',
-        min=2.0,
-        max=5.0,
-        value=[2.0, 5.0],
-        marks={str(m): str(m) for m in marks_range},
-        step=0.1
-    ),
+    html.Div([
+        html.Div([
+            html.Div([
+                dcc.Markdown(topo_label),
+                dcc.Slider(
+                    id='topo-slider',
+                    min=1,
+                    max=10,
+                    value=1,
+                    marks={str(m): str(m) for m in range(1, 11)},
+                    step=1
+                )
+            ], style={'padding': 10, 'flex': 1, 'textAlign': 'center'}),
+            html.Div([
+                dcc.Markdown(magnitudes_label),
+                dcc.RangeSlider(
+                    id='range-slider',
+                    min=2.0,
+                    max=5.0,
+                    value=[2.0, 5.0],
+                    marks={str(m): str(m) for m in marks_range},
+                    step=0.1
+                )
+            ], style={'padding': 10, 'flex': 1, 'textAlign': 'center'})
+        ], style={'display': 'flex', 'flex-direction': 'row'}),
+    ]),
     html.Br(),
     dcc.Markdown(foot_label)
 ], style={'fontFamily': 'monospace', 'margin': '2rem'})
 
+# Define the callback for the graph
 @app.callback(
     Output('graph', 'figure'),
     Input('range-slider', 'value'),
     Input('date-picker-range', 'start_date'),
-    Input('date-picker-range', 'end_date')
+    Input('date-picker-range', 'end_date'),
+    Input('topo-slider', 'value')
 )
 
-def update_bar_chart(slider_range, start_date, end_date):
+def update_bar_chart(slider_range, start_date, end_date, topo_exag):
+    # Get the lower and upper bounds of the magnitudes
     low, high = slider_range
 
     # Filter by date
@@ -90,44 +113,37 @@ def update_bar_chart(slider_range, start_date, end_date):
     if end_date is None:
         end_date = df['fecha_utc'].max()
 
+    # Convert the date strings to datetime objects
     start_date = pd.to_datetime(start_date)
     end_date = pd.to_datetime(end_date)
 
     # Filter by date and magnitude
     mask = df[(df['magnitud'] >= low) & (df['magnitud'] <= high) & (df['fecha_utc'] >= start_date) & (df['fecha_utc'] <= end_date)]
 
+    # If the mask is empty, show a message
     if len(mask) > 0:
 
-        tooltip_labels = {
-            'fecha_hora_utc': 'Fecha y hora UTC',
-            'latitud': 'Latitud',
-            'longitud': 'Longitud',
-            'profundidad': 'Profundidad (km)',
-            'magnitud': 'Magnitud',
-            'referencia': 'Referencia'
-        }
-
-        # fig = px.scatter_3d(mask, x="latitud", y="longitud", z="profundidad", size='magnitud', size_max=10,
-        #                     color="magnitud", hover_data=['fecha_hora_utc', 'latitud', 'longitud', 'profundidad', 'magnitud', 'referencia'],
-        #                     labels=tooltip_labels)
-
+        # Create the figure
         fig = go.Figure()
 
+        # Add the topography
         fig.add_trace(go.Surface(
-            z=z, x=x, y=y, 
+            z=z*topo_exag, x=x, y=y, 
             name="Topografía", 
             showscale=False,
             # Set the hover template and multiply the z value by 1000 to convert from km to m
             hovertemplate='<b>Longitud</b>: %{x}<br><b>Latitud</b>: %{y}<br><b>Elevación</b>: %{z} km',
+            showlegend=True,
         ))
 
+        # Add the earthquakes
         fig.add_trace(go.Scatter3d(
             x=mask['longitud'],
             y=mask['latitud'],
             z=mask['profundidad'],
             mode='markers',
             marker=dict(
-                size=2,
+                size=1.5,
                 color=mask['magnitud'],
                 colorscale='Viridis',
                 colorbar=dict(title='Magnitudes', titleside='bottom', xpad=0.5, ypad=0.5),
@@ -142,21 +158,32 @@ def update_bar_chart(slider_range, start_date, end_date):
                 '<b>Magnitud</b>: %{customdata[4]}<br>' +
                 '<b>Referencia</b>: %{customdata[5]}<br>',
             customdata=mask[['fecha_hora_utc', 'latitud', 'longitud', 'profundidad', 'magnitud', 'referencia']].values,
-            name="Sismos"            
+            name="Sismos",
+            showlegend=True   
         ))
 
         # Format the labels
-        fig.update_layout(scene = dict(
-                        xaxis_title='Latitud',
-                        yaxis_title='Longitud',
-                        zaxis_title='Profundidad (km)'),
-                        margin=dict(r=20, b=10, l=10, t=10))
+        fig.update_layout(
+            scene = dict(
+                xaxis_title='Latitud',
+                yaxis_title='Longitud',
+                zaxis_title='Profundidad (km)'
+            ),
+            margin=dict(l=0, r=0, b=0, t=0),
+            legend=dict(
+                yanchor="top",
+                y=0.99,
+                xanchor="left",
+                x=0.01,
+                font=dict(
+                    size=14
+                )
+            ),
+            showlegend=True,
+            legend_title_text='Capas',
+            font_family="monospace"
+        )
 
-        # Change the font family to monospace
-        fig.update_layout(font_family="monospace")
-
-        # Set the figure to use all the space in the browser
-        fig.update_layout(margin=dict(l=0, r=0, b=0, t=0))
     else:
         # If there is no data, show a message
         fig = px.scatter_3d()
