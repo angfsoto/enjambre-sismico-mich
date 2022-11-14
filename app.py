@@ -19,6 +19,7 @@ z = np.round(z/1000, 3)
 df = pd.read_csv('data/enjambres.csv')
 df['profundidad'] = -df['profundidad']
 df['fecha_utc'] = pd.to_datetime(df['fecha_utc'])
+total_earthquakes_count = len(df)
 
 # Join fecha_utc and hora_utc into a single datetime column with the format 'YYYY-MM-DDTHH:MM:SS'
 df['fecha_hora_utc'] = df['fecha_utc'].dt.strftime('%Y-%m-%d') + 'T' + df['hora_utc']
@@ -27,7 +28,7 @@ df['fecha_hora_utc'] = df['fecha_utc'].dt.strftime('%Y-%m-%d') + 'T' + df['hora_
 markdown_text = '''
 # Enjambre sísmico Michoacán 2019 - 2022
 
-Enjambres sísmicos registrados entre abril 2019 y agosto 2022 en los alrededores
+Enjambres sísmicos registrados entre abril 2019 y noviembre 2022 en los alrededores
 de los volcanes Tancítaro y Paricutín en Michoacán, México.
 '''
 datepicker_label = "#### Rango de fechas UTC:"
@@ -38,8 +39,8 @@ foot_label = '''
 
 - Sismos del [Servicio Sismológico Nacional](http://www.ssn.unam.mx/).
 - Topografía de [OpenTopography](https://www.opentopography.org/).
-- Creado por [Juan Carlos Bucio T.](https://jcbucio.github.io/).
 - Código fuente en [GitHub](https://github.com/JCBucio/enjambre-sismico-mich).
+- Creado por [Juan Carlos Bucio T.](https://jcbucio.github.io/)
 '''
 
 marks_range = np.arange(2.0, 5.0, 0.5)
@@ -48,18 +49,25 @@ marks_range = np.arange(2.0, 5.0, 0.5)
 app.layout = html.Div([
     dcc.Markdown(children=markdown_text, style={'textAlign': 'center'}),
     html.Div([
-        dcc.Markdown(children=datepicker_label),
-        dcc.DatePickerRange(
-            id='date-picker-range',
-            min_date_allowed=df['fecha_utc'].min(),
-            max_date_allowed=df['fecha_utc'].max(),
-            start_date=df['fecha_utc'].min(),
-            end_date=df['fecha_utc'].max(),
-            clearable=True,
-            start_date_placeholder_text="Fecha inicial",
-            end_date_placeholder_text="Fecha final",
-        )
-    ], style={'textAlign': 'center'}),
+        html.Div([
+            dcc.Markdown(children=datepicker_label),
+            dcc.DatePickerRange(
+                id='date-picker-range',
+                min_date_allowed=df['fecha_utc'].min(),
+                max_date_allowed=df['fecha_utc'].max(),
+                start_date=df['fecha_utc'].min(),
+                end_date=df['fecha_utc'].max(),
+                clearable=True,
+                start_date_placeholder_text="Fecha inicial",
+                end_date_placeholder_text="Fecha final",
+            )
+        ], style={'flex': 1, 'textAlign': 'center'}),
+        html.Div([
+            # Add a label that shows the count of earthquakes in the selected date range
+            dcc.Markdown(children='#### Sismos mostrados: '),
+            dcc.Markdown(id='count-label'),
+    ], style={'flex': 1, 'textAlign': 'center'}),
+    ], style={'display': 'flex', 'flexDirection': 'row'}),
     dcc.Loading(
         id="loading-1",
         type="default",
@@ -100,6 +108,7 @@ app.layout = html.Div([
 @app.callback(
     Output('graph', 'figure'),
     Output('loading-output-1', 'children'),
+    Output('count-label', 'children'),
     Input('range-slider', 'value'),
     Input('date-picker-range', 'start_date'),
     Input('date-picker-range', 'end_date'),
@@ -124,6 +133,9 @@ def update_chart(slider_range, start_date, end_date, topo_exag):
 
     # Filter by date and magnitude
     mask = df[(df['magnitud'] >= low) & (df['magnitud'] <= high) & (df['fecha_utc'] >= start_date) & (df['fecha_utc'] <= end_date)]
+
+    # Format the count label to have commas every 3 digits
+    count_label = f'{len(mask):,} de {total_earthquakes_count:,}'
 
     # If the mask is empty, show a message
     if len(mask) > 0:
@@ -199,7 +211,7 @@ def update_chart(slider_range, start_date, end_date, topo_exag):
             title_x=0.5
        )
     
-    return fig, " "
+    return fig, " ", count_label
 
 if __name__ == '__main__':
     app.run_server(debug=False)
