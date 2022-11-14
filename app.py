@@ -32,7 +32,7 @@ de los volcanes Tancítaro y Paricutín en Michoacán, México.
 '''
 datepicker_label = "#### Rango de fechas UTC:"
 magnitudes_label = "#### Rango de magnitudes:"
-topo_label = "#### Exageración de elevación:"
+topo_label = "#### Exagerar elevación:"
 foot_label = '''
 ### Referencias
 
